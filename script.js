@@ -1,47 +1,19 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>シンプル電卓</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <main class="calculator" role="application" aria-label="電卓">
-    <section class="display">
-      <div id="expr" class="expr" aria-hidden="true"></div>
-      <div id="value" class="value" aria-live="polite">0</div>
-    </section>
+(function(){ const exprEl = document.getElementById('expr'); const valueEl = document.getElementById('value'); let expr = ''; let lastInput = '';
 
-    <section class="pad" role="group" aria-label="電卓ボタン">
-      <button id="clear" class="small">C</button>
-      <button id="back" class="small">⌫</button>
-      <button id="percent" class="small">%</button>
-      <button data-op="/" class="operator">÷</button>
+function updateDisplay(){ exprEl.textContent = expr; valueEl.textContent = expr === '' ? '0' : expr; }
 
-      <button data-num="7">7</button>
-      <button data-num="8">8</button>
-      <button data-num="9">9</button>
-      <button data-op="*" class="operator">×</button>
+function appendToken(token){ const operators = ['+','-','','/','%']; const last = expr.slice(-1); if(operators.includes(token)){ if(expr === '' && token !== '-') return; // can't start with operator except - if(operators.includes(last)){ expr = expr.slice(0,-1) + token; } else { expr += token; } } else { if(token === '.'){ let i = Math.max(expr.lastIndexOf('+'), expr.lastIndexOf('-'), expr.lastIndexOf(''), expr.lastIndexOf('/'), expr.lastIndexOf('%')); const cur = expr.slice(i+1); if(cur.includes('.')) return; if(cur === '') expr += '0'; } expr += token; } lastInput = token; updateDisplay(); }
 
-      <button data-num="4">4</button>
-      <button data-num="5">5</button>
-      <button data-num="6">6</button>
-      <button data-op="-" class="operator">−</button>
+function clearAll(){ expr = ''; updateDisplay(); } function backspace(){ expr = expr.slice(0,-1); updateDisplay(); }
 
-      <button data-num="1">1</button>
-      <button data-num="2">2</button>
-      <button data-num="3">3</button>
-      <button data-op="+" class="operator">+</button>
+function evaluateExpression(){ if(expr === '') return; if(!/^[-+*/%.0-9()\s]+$/.test(expr)){ valueEl.textContent = 'エラー'; return; } try{ const safe = expr.replace(/(\d+(?:.\d+)?)%/g, '($1/100)'); const result = Function('return '+ safe)(); expr = (Number.isFinite(result) ? String(result) : 'エラー'); updateDisplay(); }catch(e){ valueEl.textContent = 'エラー'; } }
 
-      <button data-num="0" class="double">0</button>
-      <button data-num="." class="small">.</button>
-      <button id="equals" class="operator">=</button>
-    </section>
+document.querySelectorAll('[data-num]').forEach(b=>b.addEventListener('click',()=>appendToken(b.getAttribute('data-num')))); document.querySelectorAll('[data-op]').forEach(b=>b.addEventListener('click',()=>appendToken(b.getAttribute('data-op')))); document.getElementById('clear').addEventListener('click',clearAll); document.getElementById('back').addEventListener('click',backspace); document.getElementById('percent').addEventListener('click',()=>appendToken('%')); document.getElementById('equals').addEventListener('click',evaluateExpression);
 
-    <div class="footer">キーボード対応：数字 / + - * / / / Enter = / Backspace / Esc(C)</div>
-  </main>
+window.addEventListener('keydown', (e)=>{ if(e.key >= '0' && e.key <= '9') appendToken(e.key); else if(e.key === '.') appendToken('.'); else if(e.key === '+' || e.key === '-' || e.key === '*' || e.key === '/') appendToken(e.key); else if(e.key === 'Enter' || e.key === '=') { e.preventDefault(); evaluateExpression(); } else if(e.key === 'Backspace') backspace(); else if(e.key === 'Escape') clearAll(); else if(e.key === '%') appendToken('%'); });
 
-  <script src="script.js"></script>
-</body>
-</html>
+window.addEventListener('paste', (e)=>{ const text = (e.clipboardData || window.clipboardData).getData('text'); if(/[^0-9+-*/%.()\s]/.test(text)){ e.preventDefault(); } else { e.preventDefault(); expr += text.replace(/\s+/g,''); updateDisplay(); } });
+
+updateDisplay(); })();
+
+
