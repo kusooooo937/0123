@@ -1,19 +1,92 @@
-(function(){ const exprEl = document.getElementById('expr'); const valueEl = document.getElementById('value'); let expr = ''; let lastInput = '';
+const exprEl = document.getElementById("expr");
+const valueEl = document.getElementById("value");
 
-function updateDisplay(){ exprEl.textContent = expr; valueEl.textContent = expr === '' ? '0' : expr; }
+let current = "0";
+let expression = "";
 
-function appendToken(token){ const operators = ['+','-','','/','%']; const last = expr.slice(-1); if(operators.includes(token)){ if(expr === '' && token !== '-') return; // can't start with operator except - if(operators.includes(last)){ expr = expr.slice(0,-1) + token; } else { expr += token; } } else { if(token === '.'){ let i = Math.max(expr.lastIndexOf('+'), expr.lastIndexOf('-'), expr.lastIndexOf(''), expr.lastIndexOf('/'), expr.lastIndexOf('%')); const cur = expr.slice(i+1); if(cur.includes('.')) return; if(cur === '') expr += '0'; } expr += token; } lastInput = token; updateDisplay(); }
+function updateDisplay() {
+  exprEl.textContent = expression;
+  valueEl.textContent = current;
+}
 
-function clearAll(){ expr = ''; updateDisplay(); } function backspace(){ expr = expr.slice(0,-1); updateDisplay(); }
+function clearAll() {
+  current = "0";
+  expression = "";
+  updateDisplay();
+}
 
-function evaluateExpression(){ if(expr === '') return; if(!/^[-+*/%.0-9()\s]+$/.test(expr)){ valueEl.textContent = 'エラー'; return; } try{ const safe = expr.replace(/(\d+(?:.\d+)?)%/g, '($1/100)'); const result = Function('return '+ safe)(); expr = (Number.isFinite(result) ? String(result) : 'エラー'); updateDisplay(); }catch(e){ valueEl.textContent = 'エラー'; } }
+function backspace() {
+  if (current.length > 1) {
+    current = current.slice(0, -1);
+  } else {
+    current = "0";
+  }
+  updateDisplay();
+}
 
-document.querySelectorAll('[data-num]').forEach(b=>b.addEventListener('click',()=>appendToken(b.getAttribute('data-num')))); document.querySelectorAll('[data-op]').forEach(b=>b.addEventListener('click',()=>appendToken(b.getAttribute('data-op')))); document.getElementById('clear').addEventListener('click',clearAll); document.getElementById('back').addEventListener('click',backspace); document.getElementById('percent').addEventListener('click',()=>appendToken('%')); document.getElementById('equals').addEventListener('click',evaluateExpression);
+function appendNumber(num) {
+  if (current === "0" && num !== ".") {
+    current = num;
+  } else {
+    current += num;
+  }
+  updateDisplay();
+}
 
-window.addEventListener('keydown', (e)=>{ if(e.key >= '0' && e.key <= '9') appendToken(e.key); else if(e.key === '.') appendToken('.'); else if(e.key === '+' || e.key === '-' || e.key === '*' || e.key === '/') appendToken(e.key); else if(e.key === 'Enter' || e.key === '=') { e.preventDefault(); evaluateExpression(); } else if(e.key === 'Backspace') backspace(); else if(e.key === 'Escape') clearAll(); else if(e.key === '%') appendToken('%'); });
+function appendOperator(op) {
+  expression += current + " " + op + " ";
+  current = "0";
+  updateDisplay();
+}
 
-window.addEventListener('paste', (e)=>{ const text = (e.clipboardData || window.clipboardData).getData('text'); if(/[^0-9+-*/%.()\s]/.test(text)){ e.preventDefault(); } else { e.preventDefault(); expr += text.replace(/\s+/g,''); updateDisplay(); } });
+function calculate() {
+  try {
+    expression += current;
+    const result = eval(expression);
+    current = String(result);
+    expression = "";
+  } catch {
+    current = "Error";
+    expression = "";
+  }
+  updateDisplay();
+}
 
-updateDisplay(); })();
+function percent() {
+  current = String(parseFloat(current) / 100);
+  updateDisplay();
+}
 
+// ボタンイベント
+document.querySelectorAll("[data-num]").forEach(btn =>
+  btn.addEventListener("click", () => appendNumber(btn.dataset.num))
+);
 
+document.querySelectorAll("[data-op]").forEach(btn =>
+  btn.addEventListener("click", () => appendOperator(btn.dataset.op))
+);
+
+document.getElementById("clear").addEventListener("click", clearAll);
+document.getElementById("back").addEventListener("click", backspace);
+document.getElementById("equals").addEventListener("click", calculate);
+document.getElementById("percent").addEventListener("click", percent);
+
+// キーボード入力対応
+document.addEventListener("keydown", (e) => {
+  if (!isNaN(e.key) || e.key === ".") {
+    appendNumber(e.key);
+  } else if (["+", "-", "*", "/"].includes(e.key)) {
+    appendOperator(e.key);
+  } else if (e.key === "Enter" || e.key === "=") {
+    calculate();
+  } else if (e.key === "Backspace") {
+    backspace();
+  } else if (e.key.toLowerCase() === "c" || e.key === "Escape") {
+    clearAll();
+  } else if (e.key === "%") {
+    percent();
+  }
+});
+
+// 初期表示
+updateDisplay();
